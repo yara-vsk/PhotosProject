@@ -8,7 +8,7 @@ import json
 
 
 class Command(BaseCommand):
-    help = 'Closes the specified poll for voting'
+    help = 'Importphotos'
 
     def add_arguments(self, parser):
         parser.add_argument('Import from', type=str)
