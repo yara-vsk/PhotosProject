@@ -41,6 +41,8 @@ class PhotoAPIView(APIView):
         pk = kwargs.get('pk', None)
         if pk:
             return Response({'error': "Method POST not allowed"})
+        if isinstance(request.data,list):
+            return Response({'error': "POST only 1 object"})
         data = get_import_foto_data(request.data)
         serializer = PhotoSerializer(data=data)
         if serializer.is_valid():
@@ -60,6 +62,8 @@ class PhotoAPIView(APIView):
             instance=Photo.objects.get(pk=pk)
         except:
             return Response({'error':"Object does not exists"})
+        if isinstance(request.data,list):
+            return Response({'error': "PUT only 1 object"})
         data = get_import_foto_data(request.data)
         serializer=PhotoSerializer(data=data,instance=instance)
         if serializer.is_valid():
@@ -95,7 +99,7 @@ class PhotoImportView(APIView):
                     asyncio.set_event_loop(loop)
                     loop.run_until_complete(save_fotos_from_urls(url_list))
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
-                except ValueError:
+                except:
                     Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': "request error"})
@@ -111,7 +115,7 @@ class PhotoImportView(APIView):
                     asyncio.set_event_loop(loop)
                     loop.run_until_complete(save_fotos_from_urls(url_list))
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
-                except ValueError:
+                except:
                     Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': "Json is not correct"})
