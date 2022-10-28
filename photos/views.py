@@ -1,12 +1,14 @@
-from django.shortcuts import render
+
 from .models import Photo
-from .serializers import PhotoSerializer, PhotoImportSerializer
+from .serializers import PhotoSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models.functions import Concat
 from django.db.models import CharField, Value as V
-import requests
+import asyncio
+from .datahandler import get_import_fotos_data, get_import_foto_data
+from .fotocreator import save_fotos_from_urls, save_png
 
 
 class PhotoAPIView(APIView):
@@ -30,19 +32,24 @@ class PhotoAPIView(APIView):
                            output_field=CharField())).values('id', 'title', 'albumId', 'width', 'height',
                                                              'dominant_color', 'url')
 
-
             serializer = PhotoSerializer(photos[0])
             return Response(serializer.data)
         except:
             return Response({'error':"Object does not exists"})
 
-    def post(self, request):
-        data = request.data
-        data['url_ext']=data['url']
+    def post(self, request, *args, **kwargs):
+        pk = kwargs.get('pk', None)
+        if pk:
+            return Response({'error': "Method POST not allowed"})
+        data = get_import_foto_data(request.data)
         serializer = PhotoSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                serializer.save()
+                save_png(request.data.get('url'))
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({'error': "Json is not correct"})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, *args, **kwargs):
@@ -53,12 +60,15 @@ class PhotoAPIView(APIView):
             instance=Photo.objects.get(pk=pk)
         except:
             return Response({'error':"Object does not exists"})
-        data = request.data
-        data['url_ext'] = data['url']
+        data = get_import_foto_data(request.data)
         serializer=PhotoSerializer(data=data,instance=instance)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                serializer.save()
+                save_png(request.data.get('url'))
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({'error': "Json is not correct"})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):
@@ -73,21 +83,38 @@ class PhotoAPIView(APIView):
 
 
 class PhotoImportView(APIView):
+
     def get(self, request):
-        pfotos_list=requests.get('https://jsonplaceholder.typicode.com/photos').json()
-        serializer = PhotoImportSerializer(data=pfotos_list, many=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        url_list, photos_list_of_dict = get_import_fotos_data()
+        if url_list and photos_list_of_dict:
+            serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                except ValueError:
+                    Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': "request error"})
 
     def post(self, request):
-        serializer = PhotoImportSerializer(data=request.data, many=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        url_list, photos_list_of_dict = get_import_fotos_data(request.data)
+        if url_list and photos_list_of_dict:
+            serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                except ValueError:
+                    Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': "Json is not correct"})
 
 
 
