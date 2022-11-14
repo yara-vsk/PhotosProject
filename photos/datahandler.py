@@ -25,19 +25,7 @@ def get_data_from_url(url):
     return False
 
 
-def create_url_local(url):
-    data_from_url=get_data_from_url(url)
-    if data_from_url:
-        png_f_width=data_from_url[0]
-        png_f_heigth=data_from_url[1]
-        png_f_dominate_color=data_from_url[2]
-        url_local = 'media/' + str(png_f_width) + 'x' + str(png_f_heigth) + '_' + png_f_dominate_color + '.png'
-        return url_local
-    return False
-
-
 def get_import_fotos_data(request_data=None):
-    url_list = []
     photos_list_of_dict = []
     if request_data is None:
         try:
@@ -45,12 +33,11 @@ def get_import_fotos_data(request_data=None):
             for photo_dict in photos_list:
                 data_list = get_data_from_url(photo_dict.get('url'))
                 if data_list:
-                    url_list.append(photo_dict.get('url'))
                     photo_dict['width'] = data_list[0]
                     photo_dict['height'] = data_list[1]
                     photo_dict['dominant_color'] = data_list[2]
                     photos_list_of_dict.append(photo_dict)
-            return (url_list, photos_list_of_dict)
+            return photos_list_of_dict
         except:
             return None
 
@@ -59,12 +46,11 @@ def get_import_fotos_data(request_data=None):
         for photo_dict in photos_list:
             data_list = get_data_from_url(photo_dict.get('url'))
             if data_list:
-                url_list.append(photo_dict.get('url'))
                 photo_dict['width'] = data_list[0]
                 photo_dict['height'] = data_list[1]
                 photo_dict['dominant_color'] = data_list[2]
                 photos_list_of_dict.append(photo_dict)
-        return (url_list, photos_list_of_dict)
+        return photos_list_of_dict
     except:
         return None
 

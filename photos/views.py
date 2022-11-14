@@ -1,4 +1,4 @@
-
+import os
 from .models import Photo
 from .serializers import PhotoSerializer
 from rest_framework.views import APIView
@@ -18,7 +18,7 @@ class PhotoAPIView(APIView):
         if not pk:
             try:
                 photos = Photo.objects.annotate(
-                    url=Concat(V('/media/'), 'width', V('x'), 'height', V('_'), 'dominant_color', V('.png'),
+                    url=Concat(V('/media/'), 'id', V('.png'),
                                output_field=CharField())).values('id', 'title', 'albumId',
                                                                  'width', 'height',
                                                                  'dominant_color', 'url')
@@ -48,7 +48,8 @@ class PhotoAPIView(APIView):
         if serializer.is_valid():
             try:
                 serializer.save()
-                save_png(request.data.get('url'))
+                ph_id=serializer.data['id']
+                save_png(request.data.get('url'),ph_id)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except:
                 return Response({'error': "Json is not correct"})
@@ -69,7 +70,7 @@ class PhotoAPIView(APIView):
         if serializer.is_valid():
             try:
                 serializer.save()
-                save_png(request.data.get('url'))
+                save_png(request.data.get('url'), pk)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except:
                 return Response({'error': "Json is not correct"})
@@ -81,6 +82,7 @@ class PhotoAPIView(APIView):
             return Response({'error':"Method DELETE not allowed"})
         try:
             instance=Photo.objects.get(pk=pk).delete()
+            os.remove('media/' + str(pk) + '.png')
             return Response({'post': "delete photo - id "+str(pk)})
         except:
             return Response({'error':"Object does not exists"})
@@ -89,15 +91,16 @@ class PhotoAPIView(APIView):
 class PhotoImportView(APIView):
 
     def get(self, request):
-        url_list, photos_list_of_dict = get_import_fotos_data()
-        if url_list and photos_list_of_dict:
+        photos_list_of_dict = get_import_fotos_data()
+        if photos_list_of_dict:
             serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
             if serializer.is_valid():
                 try:
                     serializer.save()
+                    list_of_obj_photos = serializer.data
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    loop.run_until_complete(save_fotos_from_urls(list_of_obj_photos))
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
                 except:
                     Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -105,15 +108,16 @@ class PhotoImportView(APIView):
         return Response({'error': "request error"})
 
     def post(self, request):
-        url_list, photos_list_of_dict = get_import_fotos_data(request.data)
-        if url_list and photos_list_of_dict:
+        photos_list_of_dict = get_import_fotos_data(request.data)
+        if photos_list_of_dict:
             serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
             if serializer.is_valid():
                 try:
                     serializer.save()
+                    list_of_obj_photos=serializer.data
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    loop.run_until_complete(save_fotos_from_urls(list_of_obj_photos))
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
                 except:
                     Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -29,15 +29,16 @@ class Command(BaseCommand):
             raise CommandError('Enter as argument "api" or "json"')
 
     def get_from_api(self):
-        url_list, photos_list_of_dict = get_import_fotos_data()
-        if url_list and photos_list_of_dict:
+        photos_list_of_dict = get_import_fotos_data()
+        if photos_list_of_dict:
             serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
             if serializer.is_valid():
                 try:
                     serializer.save()
+                    list_of_obj_photos = serializer.data
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    loop.run_until_complete(save_fotos_from_urls(list_of_obj_photos))
                     self.stdout.write('Import photos from external API is success')
                     return
                 except:
@@ -46,15 +47,16 @@ class Command(BaseCommand):
         raise CommandError('Error')
 
     def get_from_json(self, json_f):
-        url_list, photos_list_of_dict = get_import_fotos_data(json.loads(json_f))
-        if url_list and photos_list_of_dict:
+        photos_list_of_dict = get_import_fotos_data(json.loads(json_f))
+        if photos_list_of_dict:
             serializer = PhotoSerializer(data=photos_list_of_dict, many=True)
             if serializer.is_valid():
                 try:
                     serializer.save()
+                    list_of_obj_photos = serializer.data
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(save_fotos_from_urls(url_list))
+                    loop.run_until_complete(save_fotos_from_urls(list_of_obj_photos))
                     self.stdout.write('Import photos from json is success')
                     return
                 except:
