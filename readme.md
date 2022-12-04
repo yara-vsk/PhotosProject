@@ -1,4 +1,4 @@
-#Recruitment task
+# Recruitment task
 Design and implement a simple backend application for managing photos.
 We want to store photo title, album ID, width, height and dominant color (as a hex code) in local
 database; the files should be stored in local filesystem.
